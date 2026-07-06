@@ -1,11 +1,12 @@
 // Google Sheets Backend - syncs data with user's Google Sheet
 const SheetsBackend = {
     SPREADSHEET_NAME: 'Portfolio Manager Data',
+    APP_PROPERTY_KEY: 'pmApp',
+    APP_PROPERTY_VALUE: 'portfolio-manager',
     spreadsheetId: null,
     isSyncing: false,
     _writingInProgress: false,
 
-    // Initialize - find or create the spreadsheet
     async init() {
         if (!GoogleAuth.isSignedIn()) return;
 
@@ -13,7 +14,6 @@ const SheetsBackend = {
 
         try {
             if (this.spreadsheetId) {
-                // Verify the spreadsheet still exists
                 const valid = await this._verifySpreadsheet();
                 if (!valid) {
                     this.spreadsheetId = null;
@@ -22,27 +22,35 @@ const SheetsBackend = {
             }
 
             if (!this.spreadsheetId) {
-                // Search for existing spreadsheet or create new one
                 this.spreadsheetId = await this._findSpreadsheet();
+
+                if (!this.spreadsheetId) {
+                    this.spreadsheetId = await this._findSpreadsheetByLegacyName();
+                    if (this.spreadsheetId) {
+                        await this._tagSpreadsheet(this.spreadsheetId);
+                    }
+                }
+
+                if (!this.spreadsheetId) {
+                    this.spreadsheetId = await this._findSpreadsheetByPickerRecovery();
+                }
+
                 if (!this.spreadsheetId) {
                     this.spreadsheetId = await this._createSpreadsheet();
-                    // Push local data to newly created sheet
                     await this._pushLocalDataToSheet();
                 } else {
-                    // Found existing sheet, pull data from it
                     await this.pullFromSheet();
                 }
+
                 localStorage.setItem('pm_spreadsheet_id', this.spreadsheetId);
             } else {
-                // Pull latest data from sheet
                 await this.pullFromSheet();
             }
 
             this._updateSyncStatus('synced');
             this._updateSheetLink();
-            // Pull emergency fund data (silently - may not exist yet)
             if (typeof EmergencyFund !== 'undefined') {
-                try { await EmergencyFund.pullFromSheet(); } catch(e) { /* sheet may not exist */ }
+                try { await EmergencyFund.pullFromSheet(); } catch (e) {}
             }
             showToast('Connected to Google Sheets');
         } catch (err) {
@@ -57,7 +65,6 @@ const SheetsBackend = {
         }
     },
 
-    // Sync investments to Google Sheet
     async syncInvestments(investments) {
         if (!GoogleAuth.isSignedIn() || !this.spreadsheetId) return;
         this._writingInProgress = true;
@@ -76,7 +83,6 @@ const SheetsBackend = {
         }
     },
 
-    // Sync debts to Google Sheet
     async syncDebts(debts) {
         if (!GoogleAuth.isSignedIn() || !this.spreadsheetId) {
             console.warn('syncDebts skipped: signedIn=', GoogleAuth.isSignedIn(), 'sheetId=', this.spreadsheetId);
@@ -96,10 +102,8 @@ const SheetsBackend = {
         }
     },
 
-    // Pull all data from Google Sheet
     async pullFromSheet() {
         if (!GoogleAuth.isSignedIn() || !this.spreadsheetId) return;
-        // Don't overwrite local data while a write is in progress
         if (this._writingInProgress) return;
 
         try {
@@ -110,7 +114,6 @@ const SheetsBackend = {
                 'id', 'name', 'type', 'loanAmount', 'interestRate', 'loanTenure', 'startDate', 'emiAmount'
             ]);
 
-            // Parse numeric fields for investments
             const parsedInvestments = investments.map(inv => {
                 const parsed = {
                     ...inv,
@@ -122,14 +125,12 @@ const SheetsBackend = {
                     investmentHorizon: parseInt(inv.investmentHorizon) || 0
                 };
 
-                // Parse sips from JSON string
                 if (inv.sips && typeof inv.sips === 'string' && inv.sips.startsWith('[')) {
                     try { parsed.sips = JSON.parse(inv.sips); } catch (e) { parsed.sips = []; }
                 } else {
                     parsed.sips = [];
                 }
 
-                // Auto-create SIP entry from monthlySIP if sips array is empty
                 if (parsed.sips.length === 0 && parsed.monthlySIP > 0) {
                     parsed.sips = [{
                         id: parsed.id + '_sip',
@@ -144,7 +145,6 @@ const SheetsBackend = {
                 return parsed;
             });
 
-            // Parse numeric fields for debts
             const parsedDebts = debts.map(debt => ({
                 ...debt,
                 loanAmount: parseFloat(debt.loanAmount) || 0,
@@ -153,11 +153,9 @@ const SheetsBackend = {
                 emiAmount: debt.emiAmount ? parseFloat(debt.emiAmount) : null
             }));
 
-            // Update localStorage
             Storage.saveInvestments(parsedInvestments);
             Storage.saveDebts(parsedDebts);
 
-            // Re-render
             if (typeof App !== 'undefined' && App.renderAll) {
                 App.renderAll();
             }
@@ -166,7 +164,6 @@ const SheetsBackend = {
         }
     },
 
-    // Push current localStorage data to sheet
     async _pushLocalDataToSheet() {
         const investments = Storage.getInvestments();
         const debts = Storage.getDebts();
@@ -179,7 +176,6 @@ const SheetsBackend = {
         }
     },
 
-    // API: Verify spreadsheet exists and is accessible
     async _verifySpreadsheet() {
         try {
             const response = await this._apiCall(
@@ -191,11 +187,12 @@ const SheetsBackend = {
         }
     },
 
-    // API: Find existing spreadsheet by name
     async _findSpreadsheet() {
-        const query = encodeURIComponent(`name='${this.SPREADSHEET_NAME}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`);
+        const query = encodeURIComponent(
+            `appProperties has { key='${this.APP_PROPERTY_KEY}' and value='${this.APP_PROPERTY_VALUE}' } and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`
+        );
         const response = await this._apiCall(
-            `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`
+            `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,createdTime)&orderBy=createdTime desc`
         );
 
         if (!response.ok) return null;
@@ -203,7 +200,27 @@ const SheetsBackend = {
         return data.files && data.files.length > 0 ? data.files[0].id : null;
     },
 
-    // API: Create new spreadsheet with proper structure
+    async _findSpreadsheetByLegacyName() {
+        const query = encodeURIComponent(
+            `name='${this.SPREADSHEET_NAME}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`
+        );
+
+        const response = await this._apiCall(
+            `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,createdTime)&orderBy=createdTime desc`
+        );
+
+        if (!response.ok) return null;
+
+        const data = await response.json();
+        return data.files && data.files.length > 0 ? data.files[0].id : null;
+    },
+
+    async _findSpreadsheetByPickerRecovery() {
+        const hasLocalData = Storage.getInvestments().length > 0 || Storage.getDebts().length > 0;
+        if (!hasLocalData) return null;
+        return null;
+    },
+
     async _createSpreadsheet() {
         const response = await this._apiCall(
             'https://sheets.googleapis.com/v4/spreadsheets',
@@ -241,12 +258,168 @@ const SheetsBackend = {
         }
 
         const data = await response.json();
-        return data.spreadsheetId;
+        const spreadsheetId = data.spreadsheetId;
+        await this._tagSpreadsheet(spreadsheetId);
+        return spreadsheetId;
     },
 
-    // API: Write data to a sheet tab
+    async _tagSpreadsheet(spreadsheetId) {
+        const response = await this._apiCall(
+            `https://www.googleapis.com/drive/v3/files/${spreadsheetId}`,
+            'PATCH',
+            {
+                appProperties: {
+                    [this.APP_PROPERTY_KEY]: this.APP_PROPERTY_VALUE
+                }
+            }
+        );
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw { status: response.status, message: err.error?.message || 'Failed to tag spreadsheet' };
+        }
+    },
+
+    async openRecoveryModal() {
+        const modal = document.getElementById('sheetRecoveryModal');
+        const list = document.getElementById('sheetRecoveryList');
+        const status = document.getElementById('sheetRecoveryStatus');
+
+        if (!modal || !list || !status) return;
+
+        modal.style.display = 'flex';
+        status.textContent = 'Looking for spreadsheets in your Google Drive...';
+        list.innerHTML = '';
+
+        try {
+            const files = await this._listRecoverableSpreadsheets();
+
+            if (!files.length) {
+                status.textContent = '';
+                list.innerHTML = '<div class="sheet-recovery-empty">No spreadsheets were found in your Google Drive.</div>';
+                return;
+            }
+
+            status.textContent = 'Choose the spreadsheet that already contains your portfolio data.';
+            list.innerHTML = files.map(file => `
+                <div class="sheet-recovery-item">
+                    <div class="sheet-recovery-meta">
+                        <div class="sheet-recovery-title">${this._escapeHtml(file.name || 'Untitled spreadsheet')}</div>
+                        <div class="sheet-recovery-subtitle">Modified: ${new Date(file.modifiedTime).toLocaleString()}<br>ID: ${file.id}</div>
+                    </div>
+                    <button type="button" class="btn-google" data-sheet-recover-id="${file.id}">Use this sheet</button>
+                </div>
+            `).join('');
+
+            list.querySelectorAll('[data-sheet-recover-id]').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const sheetId = btn.getAttribute('data-sheet-recover-id');
+                    await this._recoverSpreadsheet(sheetId, btn);
+                });
+            });
+        } catch (err) {
+            console.error('Recovery modal error:', err);
+            status.textContent = 'Failed to load spreadsheets: ' + (err.message || 'Unknown error');
+        }
+    },
+
+    closeRecoveryModal() {
+        const modal = document.getElementById('sheetRecoveryModal');
+        if (modal) modal.style.display = 'none';
+    },
+
+    async _listRecoverableSpreadsheets() {
+        const query = encodeURIComponent(
+            `mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`
+        );
+
+        const response = await this._apiCall(
+            `https://www.googleapis.com/drive/v3/files?q=${query}&pageSize=50&fields=files(id,name,modifiedTime,appProperties)&orderBy=modifiedTime desc`
+        );
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.error?.message || 'Failed to list spreadsheets');
+        }
+
+        const data = await response.json();
+        return data.files || [];
+    },
+
+    async _recoverSpreadsheet(sheetId, buttonEl) {
+        const status = document.getElementById('sheetRecoveryStatus');
+        const originalText = buttonEl ? buttonEl.textContent : '';
+
+        try {
+            if (buttonEl) {
+                buttonEl.disabled = true;
+                buttonEl.textContent = 'Checking...';
+            }
+
+            const isPortfolioSheet = await this._looksLikePortfolioSheet(sheetId);
+            if (!isPortfolioSheet) {
+                throw new Error('This spreadsheet does not look like a Portfolio Manager sheet.');
+            }
+
+            await this._tagSpreadsheet(sheetId);
+
+            this.spreadsheetId = sheetId;
+            localStorage.setItem('pm_spreadsheet_id', sheetId);
+
+            await this.pullFromSheet();
+            this._updateSheetLink();
+            this._updateSyncStatus('synced');
+
+            if (status) status.textContent = 'Sheet connected successfully.';
+            showToast('Existing sheet reconnected');
+            this.closeRecoveryModal();
+        } catch (err) {
+            console.error('Recover spreadsheet error:', err);
+            if (status) status.textContent = err.message || 'Failed to reconnect spreadsheet';
+            if (buttonEl) {
+                buttonEl.disabled = false;
+                buttonEl.textContent = originalText;
+            }
+        }
+    },
+
+    async _looksLikePortfolioSheet(sheetId) {
+        const [investmentsResp, debtsResp] = await Promise.all([
+            this._apiCall(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Investments!A1:Z2`),
+            this._apiCall(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Debts!A1:Z2`)
+        ]);
+
+        if (!investmentsResp.ok || !debtsResp.ok) return false;
+
+        const investmentsData = await investmentsResp.json();
+        const debtsData = await debtsResp.json();
+
+        const investmentsHeaders = investmentsData.values?.[0] || [];
+        const debtsHeaders = debtsData.values?.[0] || [];
+
+        const hasInvestmentHeaders =
+            investmentsHeaders.includes('id') &&
+            investmentsHeaders.includes('name') &&
+            investmentsHeaders.includes('type');
+
+        const hasDebtHeaders =
+            debtsHeaders.includes('id') &&
+            debtsHeaders.includes('name') &&
+            debtsHeaders.includes('type');
+
+        return hasInvestmentHeaders && hasDebtHeaders;
+    },
+
+    _escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    },
+
     async _writeSheet(sheetName, items, columns) {
-        // Build rows: header + data
         const rows = [columns];
         items.forEach(item => {
             rows.push(columns.map(col => {
@@ -259,7 +432,6 @@ const SheetsBackend = {
 
         const range = `${sheetName}!A1:${String.fromCharCode(64 + columns.length)}${rows.length}`;
 
-        // Clear existing data first
         const clearResp = await this._apiCall(
             `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/${sheetName}:clear`,
             'POST'
@@ -270,7 +442,6 @@ const SheetsBackend = {
             throw { status: clearResp.status, message: clearErr.error?.message || 'Clear failed' };
         }
 
-        // Write new data
         const response = await this._apiCall(
             `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/${range}?valueInputOption=RAW`,
             'PUT',
@@ -284,14 +455,13 @@ const SheetsBackend = {
         }
     },
 
-    // API: Read data from a sheet tab
     async _readSheet(sheetName, columns) {
         const response = await this._apiCall(
             `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/${sheetName}!A:Z`
         );
 
         if (!response.ok) {
-            if (response.status === 400) return []; // Sheet might not exist yet
+            if (response.status === 400) return [];
             const err = await response.json();
             throw { status: response.status, message: err.error?.message || 'Read failed' };
         }
@@ -299,7 +469,7 @@ const SheetsBackend = {
         const data = await response.json();
         const rows = data.values || [];
 
-        if (rows.length <= 1) return []; // Only header or empty
+        if (rows.length <= 1) return [];
 
         const headers = rows[0];
         const items = [];
@@ -310,7 +480,6 @@ const SheetsBackend = {
             headers.forEach((header, idx) => {
                 item[header] = row[idx] || '';
             });
-            // Only include rows that have an id
             if (item.id) {
                 items.push(item);
             }
@@ -319,47 +488,40 @@ const SheetsBackend = {
         return items;
     },
 
-    // Make authenticated API call
     async _apiCall(url, method = 'GET', body = null) {
         const options = {
             method,
             headers: {
-                'Authorization': `Bearer ${GoogleAuth.getToken()}`,
-                'Content-Type': 'application/json'
+                'Authorization': `Bearer ${GoogleAuth.getToken()}`
             }
         };
+
         if (body) {
+            options.headers['Content-Type'] = 'application/json';
             options.body = JSON.stringify(body);
         }
+
         return fetch(url, options);
     },
 
-    // Update sync status indicator
     _updateSyncStatus(status) {
         const el = document.getElementById('syncStatus');
         if (!el) return;
 
-        el.className = 'sync-status ' + status;
-        const label = el.querySelector('.sync-label');
-        if (label) {
-            switch (status) {
-                case 'syncing': label.textContent = 'Syncing...'; break;
-                case 'synced': label.textContent = 'Synced'; break;
-                case 'error': label.textContent = 'Sync error'; break;
-            }
-        }
+        el.className = `sync-status ${status}`;
+        const label = el.querySelector('.sync-label') || el;
+
+        if (status === 'syncing') label.textContent = 'Syncing...';
+        else if (status === 'synced') label.textContent = 'Synced';
+        else if (status === 'error') label.textContent = 'Sync error';
+        else label.textContent = '';
     },
 
-    // Show link to open the spreadsheet
     _updateSheetLink() {
         const link = document.getElementById('openSheetLink');
-        if (!link) return;
+        if (!link || !this.spreadsheetId) return;
 
-        if (this.spreadsheetId) {
-            link.href = `https://docs.google.com/spreadsheets/d/${this.spreadsheetId}`;
-            link.style.display = 'inline-flex';
-        } else {
-            link.style.display = 'none';
-        }
+        link.href = `https://docs.google.com/spreadsheets/d/${this.spreadsheetId}`;
+        link.style.display = 'inline-flex';
     }
 };
