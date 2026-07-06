@@ -32,10 +32,6 @@ const SheetsBackend = {
                 }
 
                 if (!this.spreadsheetId) {
-                    this.spreadsheetId = await this._findSpreadsheetByPickerRecovery();
-                }
-
-                if (!this.spreadsheetId) {
                     this.spreadsheetId = await this._createSpreadsheet();
                     await this._pushLocalDataToSheet();
                 } else {
@@ -178,9 +174,7 @@ const SheetsBackend = {
 
     async _verifySpreadsheet() {
         try {
-            const response = await this._apiCall(
-                `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}?fields=spreadsheetId`
-            );
+            const response = await this._apiCall(`https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}?fields=spreadsheetId`);
             return response.ok;
         } catch {
             return false;
@@ -213,12 +207,6 @@ const SheetsBackend = {
 
         const data = await response.json();
         return data.files && data.files.length > 0 ? data.files[0].id : null;
-    },
-
-    async _findSpreadsheetByPickerRecovery() {
-        const hasLocalData = Storage.getInvestments().length > 0 || Storage.getDebts().length > 0;
-        if (!hasLocalData) return null;
-        return null;
     },
 
     async _createSpreadsheet() {
@@ -329,10 +317,7 @@ const SheetsBackend = {
     },
 
     async _listRecoverableSpreadsheets() {
-        const query = encodeURIComponent(
-            `mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`
-        );
-
+        const query = encodeURIComponent(`mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`);
         const response = await this._apiCall(
             `https://www.googleapis.com/drive/v3/files?q=${query}&pageSize=50&fields=files(id,name,modifiedTime,appProperties)&orderBy=modifiedTime desc`
         );
@@ -362,10 +347,8 @@ const SheetsBackend = {
             }
 
             await this._tagSpreadsheet(sheetId);
-
             this.spreadsheetId = sheetId;
             localStorage.setItem('pm_spreadsheet_id', sheetId);
-
             await this.pullFromSheet();
             this._updateSheetLink();
             this._updateSyncStatus('synced');

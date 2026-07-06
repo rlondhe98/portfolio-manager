@@ -6,7 +6,6 @@ const GoogleAuth = {
     accessToken: null,
     user: null,
 
-    // Initialize Google Identity Services
     init() {
         return new Promise((resolve) => {
             if (typeof google === 'undefined' || !google.accounts) {
