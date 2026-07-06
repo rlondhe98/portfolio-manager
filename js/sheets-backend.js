@@ -1,6 +1,8 @@
 // Google Sheets Backend - syncs data with user's Google Sheet
 const SheetsBackend = {
     SPREADSHEET_NAME: 'Portfolio Manager Data',
+    APP_PROPERTY_KEY: 'portfolioManagerApp',
+    APP_PROPERTY_VALUE: 'v1',
     spreadsheetId: null,
     isSyncing: false,
     _writingInProgress: false,
@@ -22,14 +24,29 @@ const SheetsBackend = {
             }
 
             if (!this.spreadsheetId) {
-                // Search for existing spreadsheet or create new one
-                this.spreadsheetId = await this._findSpreadsheet();
+                // 1. Look for a sheet tagged with our app property.
+                //    This works regardless of file name (rename-proof) and on any
+                //    device signed into this Google account (device-proof).
+                this.spreadsheetId = await this._findSpreadsheetByAppProperty();
+
                 if (!this.spreadsheetId) {
+                    // 2. Legacy fallback: match by exact file name, for sheets
+                    //    created before this fix. Once found, tag it so future
+                    //    lookups don't depend on the name anymore.
+                    this.spreadsheetId = await this._findSpreadsheetByName();
+                    if (this.spreadsheetId) {
+                        await this._tagSpreadsheet(this.spreadsheetId);
+                    }
+                }
+
+                if (!this.spreadsheetId) {
+                    // 3. Nothing found anywhere - create a new one and tag it.
                     this.spreadsheetId = await this._createSpreadsheet();
+                    await this._tagSpreadsheet(this.spreadsheetId);
                     // Push local data to newly created sheet
                     await this._pushLocalDataToSheet();
                 } else {
-                    // Found existing sheet, pull data from it
+                    // Found existing sheet (by tag or by name), pull data from it
                     await this.pullFromSheet();
                 }
                 localStorage.setItem('pm_spreadsheet_id', this.spreadsheetId);
@@ -191,8 +208,24 @@ const SheetsBackend = {
         }
     },
 
-    // API: Find existing spreadsheet by name
-    async _findSpreadsheet() {
+    // API: Find our spreadsheet via a permanent Drive property tag.
+    // This survives renames and works from any device signed into this account.
+    async _findSpreadsheetByAppProperty() {
+        const query = encodeURIComponent(
+            `appProperties has { key='${this.APP_PROPERTY_KEY}' and value='${this.APP_PROPERTY_VALUE}' } and trashed=false`
+        );
+        const response = await this._apiCall(
+            `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)&spaces=drive`
+        );
+
+        if (!response.ok) return null;
+        const data = await response.json();
+        return data.files && data.files.length > 0 ? data.files[0].id : null;
+    },
+
+    // API: Legacy lookup by exact file name.
+    // Only used as a one-time fallback for sheets created before the app-property tag existed.
+    async _findSpreadsheetByName() {
         const query = encodeURIComponent(`name='${this.SPREADSHEET_NAME}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`);
         const response = await this._apiCall(
             `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`
@@ -201,6 +234,23 @@ const SheetsBackend = {
         if (!response.ok) return null;
         const data = await response.json();
         return data.files && data.files.length > 0 ? data.files[0].id : null;
+    },
+
+    // API: Tag a spreadsheet with our app property so it can be found later
+    // regardless of what it gets renamed to.
+    async _tagSpreadsheet(fileId) {
+        try {
+            const response = await this._apiCall(
+                `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id`,
+                'PATCH',
+                { appProperties: { [this.APP_PROPERTY_KEY]: this.APP_PROPERTY_VALUE } }
+            );
+            if (!response.ok) {
+                console.warn('Failed to tag spreadsheet, status:', response.status);
+            }
+        } catch (e) {
+            console.warn('Failed to tag spreadsheet:', e);
+        }
     },
 
     // API: Create new spreadsheet with proper structure
@@ -361,5 +411,29 @@ const SheetsBackend = {
         } else {
             link.style.display = 'none';
         }
+    },
+
+    // Manually link to a specific spreadsheet by pasted URL or raw ID.
+    // Tags it so future automatic lookups find it too.
+    async linkSpreadsheet(idOrUrl) {
+        const match = idOrUrl.match(/[-\w]{25,}/); // extracts the ID whether pasted as full URL or raw ID
+        const id = match ? match[0] : idOrUrl.trim();
+        if (!id) { showToast('Could not parse a spreadsheet ID from that'); return; }
+
+        const prevId = this.spreadsheetId;
+        this.spreadsheetId = id;
+        const valid = await this._verifySpreadsheet();
+        if (!valid) {
+            this.spreadsheetId = prevId;
+            showToast('Could not access that spreadsheet — check the link and sharing settings');
+            return;
+        }
+
+        await this._tagSpreadsheet(id);
+        localStorage.setItem('pm_spreadsheet_id', id);
+        await this.pullFromSheet();
+        this._updateSyncStatus('synced');
+        this._updateSheetLink();
+        showToast('Linked to spreadsheet');
     }
 };
