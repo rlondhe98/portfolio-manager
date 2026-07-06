@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio Manager</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <h1 class="logo">Portfolio Manager</h1>
+            </div>
+            <div class="header-right">
+                <span class="sync-status" id="syncStatus" style="display:none">
+                    <span class="sync-dot"></span>
+                    <span class="sync-label">Synced</span>
+                </span>
+                <a class="btn-sheet-link" id="openSheetLink" href="#" target="_blank" rel="noopener" style="display:none" title="Open your spreadsheet in Google Sheets">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    <span>Open Sheet</span>
+                </a>
+                <button class="btn-google" id="googleSignInBtn" title="Sign in with Google">
+                    <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                    Sign in
+                </button>
+                <div class="user-info" id="googleUserInfo" style="display:none">
+                    <img class="user-avatar" src="" alt="" width="28" height="28">
+                    <span class="user-name"></span>
+                    <button class="btn-icon btn-signout" id="googleSignOutBtn" title="Sign out">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    </button>
+                </div>
+                <button class="btn-icon" id="exportBtn" title="Export Data">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </button>
+                <button class="btn-icon" id="importBtn" title="Import Data">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                </button>
+                <input type="file" id="importFile" accept=".json" hidden>
+                <button class="btn-icon" id="themeToggle" title="Toggle Theme">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Sign-in Gate -->
+        <div class="signin-gate" id="signinGate">
+            <div class="signin-gate-content">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--accent)"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                <h2>Welcome to Portfolio Manager</h2>
+                <p>Sign in with Google to sync your investments and debts securely to your own Google Sheet.</p>
+                <button class="btn-google btn-google-lg" id="googleSignInBtn2">
+                    <svg width="20" height="20" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                    Sign in with Google
+                </button>
+                <p class="signin-note">Your data is stored in your own Google Drive. We never see or store your information.</p>
+            </div>
+        </div>
+
+        <!-- Tab Navigation -->
+        <nav class="tab-nav" id="appNav" style="display:none">
+            <button class="tab-btn active" data-tab="summary">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                <span>Summary</span>
+            </button>
+            <button class="tab-btn" data-tab="investments">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                <span>Investments</span>
+            </button>
+            <button class="tab-btn" data-tab="debts">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                <span>Debts</span>
+            </button>
+            <button class="tab-btn" data-tab="emergency">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <span>Emergency Fund</span>
+            </button>
+            <button class="tab-btn" data-tab="calculators">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="10" y2="10"/><line x1="12" y1="10" x2="14" y2="10"/><line x1="16" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="10" y2="14"/><line x1="12" y1="14" x2="14" y2="14"/><line x1="8" y1="18" x2="10" y2="18"/></svg>
+                <span>Calculators</span>
+            </button>
+        </nav>
+
+        <!-- Tab Content -->
+        <main class="tab-content" id="appContent" style="display:none">
+            <!-- Live Data Banner -->
+            <div class="live-data-banner" id="liveDataBanner" style="display:none">
+                <span class="live-banner-dot"></span>
+                <span id="liveDataText">Fetching live data...</span>
+            </div>
+            <!-- Summary Tab -->
+            <section class="tab-pane active" id="summary">
+                <div class="summary-cards">
+                    <div class="summary-card card-assets">
+                        <div class="card-label">Total Assets</div>
+                        <div class="card-value" id="totalAssets">₹0</div>
+                        <div class="card-sub" id="assetsCount">0 instruments</div>
+                    </div>
+                    <div class="summary-card card-debts">
+                        <div class="card-label">Total Debts</div>
+                        <div class="card-value" id="totalDebts">₹0</div>
+                        <div class="card-sub" id="debtsCount">0 loans</div>
+                    </div>
+                    <div class="summary-card card-networth">
+                        <div class="card-label">Net Worth</div>
+                        <div class="card-value" id="netWorth">₹0</div>
+                        <div class="card-sub" id="networthChange"></div>
+                    </div>
+                </div>
+
+                <div class="summary-grid">
+                    <div class="summary-section">
+                        <h2>Asset Allocation</h2>
+                        <div class="allocation-bar" id="allocationBar"></div>
+                        <div class="allocation-legend" id="allocationLegend"></div>
+                    </div>
+                    <div class="summary-section" id="efSummarySection" style="display:none">
+                        <h2>Emergency Fund</h2>
+                        <div id="efSummaryContent"></div>
+                    </div>
+                </div>
+
+                <div class="summary-grid">
+                    <div class="summary-section">
+                        <h2>Investments Overview</h2>
+                        <div class="overview-list" id="investmentOverview">
+                            <div class="empty-state">No investments added yet</div>
+                        </div>
+                    </div>
+                    <div class="summary-section">
+                        <h2>Debts Overview</h2>
+                        <div class="overview-list" id="debtOverview">
+                            <div class="empty-state">No debts added yet</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Investments Tab -->
+            <section class="tab-pane" id="investments">
+                <div class="section-header">
+                    <h2>My Investments</h2>
+                    <div class="section-header-actions">
+                        <button class="btn-primary" id="addInvestmentBtn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            Add Investment
+                        </button>
+                    </div>
+                </div>
+                <div class="investments-grid" id="investmentsGrid">
+                    <div class="empty-state">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                        <p>No investments yet. Add your first investment to get started.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Debts Tab -->
+            <section class="tab-pane" id="debts">
+                <div class="section-header">
+                    <h2>My Debts</h2>
+                    <button class="btn-primary" id="addDebtBtn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Add Debt
+                    </button>
+                </div>
+                <div class="debts-grid" id="debtsGrid">
+                    <div class="empty-state">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                        <p>No debts tracked. Add a loan to monitor your progress.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Emergency Fund Tab -->
+            <section class="tab-pane" id="emergency">
+                <div id="emergencyContainer"></div>
+            </section>
+
+            <!-- Calculators Tab -->
+            <section class="tab-pane" id="calculators">
+                <div class="calc-container" id="calcContainer"></div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Investment Modal -->
+    <div class="modal-overlay" id="investmentModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="investmentModalTitle">Add Investment</h3>
+                <button class="btn-icon modal-close" data-modal="investmentModal">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <form id="investmentForm">
+                <input type="hidden" id="investmentId">
+                <input type="hidden" id="investmentSchemeCode">
+                <div class="form-group">
+                    <label for="investmentType">Type</label>
+                    <select id="investmentType" required>
+                        <option value="">Select type</option>
+                        <option value="mutual_fund">Mutual Fund</option>
+                        <option value="stocks">Stocks</option>
+                        <option value="ppf">PPF</option>
+                        <option value="epf">EPF</option>
+                        <option value="fd">Fixed Deposit</option>
+                        <option value="gold">Gold</option>
+                        <option value="real_estate">Real Estate</option>
+                        <option value="crypto">Crypto</option>
+                        <option value="nps">NPS</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div id="investmentFieldsWrapper" style="display:none">
+                <div class="form-row" id="currencyGroup" style="display:none">
+                    <div class="form-group">
+                        <label for="investmentCurrency">Currency</label>
+                        <select id="investmentCurrency">
+                            <option value="INR">INR (₹)</option>
+                            <option value="USD">USD ($)</option>
+                            <option value="EUR">EUR (€)</option>
+                            <option value="GBP">GBP (£)</option>
+                            <option value="JPY">JPY (¥)</option>
+                            <option value="AUD">AUD (A$)</option>
+                            <option value="CAD">CAD (C$)</option>
+                            <option value="SGD">SGD (S$)</option>
+                            <option value="AED">AED</option>
+                            <option value="CHF">CHF</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="investmentTicker">Ticker Symbol <small>(optional)</small></label>
+                        <input type="text" id="investmentTicker" placeholder="e.g., AAPL, MSFT, VOO">
+                    </div>
+                </div>
+                <div class="form-group" id="sharesGroup" style="display:none">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="investmentShares">Shares / Quantity</label>
+                            <input type="number" id="investmentShares" placeholder="e.g., 10.5" min="0" step="any">
+                        </div>
+                        <div class="form-group">
+                            <label for="investmentAvgPrice">Avg Buy Price</label>
+                            <input type="number" id="investmentAvgPrice" placeholder="Per share" min="0" step="any">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group" id="fundSearchGroup" style="display:none">
+                    <label for="fundSearch">Search Fund</label>
+                    <div class="fund-search-wrapper">
+                        <input type="text" id="fundSearch" placeholder="Type fund name to search..." autocomplete="off">
+                        <div class="fund-search-results" id="fundSearchResults"></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="investmentName">Name</label>
+                    <input type="text" id="investmentName" placeholder="e.g., Nifty 50 Index Fund" required>
+                </div>
+                <div class="form-group" id="unitsGroup" style="display:none">
+                    <label for="investmentUnits">Units Held <small>(from your fund statement)</small></label>
+                    <input type="number" id="investmentUnits" placeholder="e.g., 1523.456" min="0" step="0.001">
+                </div>
+                <!-- MF/General fields -->
+                <div id="mfFieldsGroup">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="initialCorpus">Initial Investment <small>(lump sum)</small></label>
+                            <input type="number" id="initialCorpus" placeholder="1000000" min="0" step="any">
+                        </div>
+                        <div class="form-group">
+                            <label for="investmentStartDate">Start Date</label>
+                            <input type="date" id="investmentStartDate">
+                        </div>
+                    </div>
+                    <div class="form-row" id="sipFieldsGroup">
+                        <div class="form-group">
+                            <label for="monthlySIP">Monthly SIP <small>(0 if no SIP)</small></label>
+                            <input type="number" id="monthlySIP" placeholder="10000" min="0" step="any">
+                        </div>
+                        <div class="form-group">
+                            <label for="sipStartDate">SIP Start Date</label>
+                            <input type="date" id="sipStartDate">
+                        </div>
+                    </div>
+                </div>
+                </div>
+                <!-- Hidden fields with defaults for expected return and horizon -->
+                <input type="hidden" id="expectedReturn" value="12">
+                <input type="hidden" id="investmentHorizon" value="10">
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" data-modal="investmentModal">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Investment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Debt Modal -->
+    <div class="modal-overlay" id="debtModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="debtModalTitle">Add Debt</h3>
+                <button class="btn-icon modal-close" data-modal="debtModal">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <form id="debtForm">
+                <input type="hidden" id="debtId">
+                <div class="form-group">
+                    <label for="debtName">Loan Name</label>
+                    <input type="text" id="debtName" placeholder="e.g., Home Loan - SBI" required>
+                </div>
+                <div class="form-group">
+                    <label for="debtType">Type</label>
+                    <select id="debtType" required>
+                        <option value="">Select type</option>
+                        <option value="home_loan">Home Loan</option>
+                        <option value="car_loan">Car Loan</option>
+                        <option value="personal_loan">Personal Loan</option>
+                        <option value="education_loan">Education Loan</option>
+                        <option value="credit_card">Credit Card</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="loanAmount">Loan Amount (₹)</label>
+                        <input type="number" id="loanAmount" placeholder="5000000" min="0" step="1000" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="interestRate">Interest Rate (%/yr)</label>
+                        <input type="number" id="interestRate" placeholder="8.5" min="0" max="50" step="0.01" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="loanTenure">Tenure (months)</label>
+                        <input type="number" id="loanTenure" placeholder="240" min="1" max="600" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="loanStartDate">Start Date</label>
+                        <input type="date" id="loanStartDate" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="emiAmount">EMI Amount (₹) <small>(auto-calculated if empty)</small></label>
+                    <input type="number" id="emiAmount" placeholder="Auto-calculated" min="0" step="1">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" data-modal="debtModal">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Debt</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- What-If Modal -->
+    <div class="modal-overlay" id="whatIfModal">
+        <div class="modal modal-wide">
+            <div class="modal-header">
+                <h3>What-If Analysis</h3>
+                <button class="btn-icon modal-close" data-modal="whatIfModal">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="whatif-content" id="whatIfContent"></div>
+        </div>
+    </div>
+
+    <!-- Detail Modal -->
+    <div class="modal-overlay" id="detailModal">
+        <div class="modal modal-wide">
+            <div class="modal-header">
+                <h3 id="detailModalTitle">Details</h3>
+                <button class="btn-icon modal-close" data-modal="detailModal">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="detail-modal-content" id="detailModalContent"></div>
+        </div>
+    </div>
+
+    <!-- CAS Import Modal -->
+    <div class="modal-overlay" id="casImportModal">
+        <div class="modal modal-wide">
+            <div class="modal-header">
+                <h3>Import from CAS Statement</h3>
+                <button class="btn-icon modal-close" data-modal="casImportModal">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="cas-modal-content">
+                <div id="casInstructions">
+                    <div class="cas-steps">
+                        <h4>How to get your CAS Statement</h4>
+                        <ol>
+                            <li>Go to <a href="https://www.camsonline.com/Investors/Statements/Consolidated-Account-Statement" target="_blank" rel="noopener">CAMS CAS Statement</a></li>
+                            <li>Select Statement Type: <strong>Summary (Only balances and valuations)</strong></li>
+                            <li>Set "As On" to <strong>today's date</strong></li>
+                            <li>Folio Listing: <strong>Without zero balance folios</strong></li>
+                            <li>Enter your <strong>registered email</strong> and <strong>PAN</strong></li>
+                            <li>Set a password and click <strong>Submit</strong></li>
+                            <li>Check your email for the PDF attachment</li>
+                        </ol>
+                    </div>
+                </div>
+                <div id="casFileSection">
+                    <div class="form-group">
+                        <label for="casFile">Upload CAS PDF</label>
+                        <input type="file" id="casFile" accept=".pdf">
+                    </div>
+                    <div class="form-group">
+                        <label for="casPassword">PDF Password</label>
+                        <input type="password" id="casPassword" placeholder="Password you set while requesting the statement">
+                    </div>
+                    <div class="cas-status" id="casStatus" style="display:none"></div>
+                    <button class="btn-primary" onclick="CASImporter.parsePDF()">Parse Statement</button>
+                </div>
+                <div id="casParseResults" style="display:none"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+    <script src="js/storage.js"></script>
+    <script src="js/google-auth.js"></script>
+    <script src="js/sheets-backend.js"></script>
+    <script src="js/currency.js"></script>
+    <script src="js/mf-api.js"></script>
+    <script src="js/cas-importer.js"></script>
+    <script src="js/sips-view.js"></script>
+    <script src="js/calculators.js"></script>
+    <script src="js/emergency-fund.js"></script>
+    <script src="js/investments.js"></script>
+    <script src="js/debts.js"></script>
+    <script src="js/summary.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
