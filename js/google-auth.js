@@ -142,6 +142,7 @@ const GoogleAuth = {
         const userInfo = document.getElementById('googleUserInfo');
         const syncStatus = document.getElementById('syncStatus');
         const sheetLink = document.getElementById('openSheetLink');
+        const linkSheetBtn = document.getElementById('linkSheetBtn'); // NEW
         const signinGate = document.getElementById('signinGate');
         const appNav = document.getElementById('appNav');
         const appContent = document.getElementById('appContent');
@@ -155,6 +156,8 @@ const GoogleAuth = {
             userInfo.querySelector('.user-avatar').src = (this.user && this.user.picture) || '';
             userInfo.querySelector('.user-avatar').style.display = (this.user && this.user.picture) ? 'block' : 'none';
             if (syncStatus) syncStatus.style.display = 'inline-flex';
+            if (linkSheetBtn) linkSheetBtn.style.display = 'inline-flex'; // NEW
+            
             // Show sheet link if we have a stored spreadsheet ID
             const sheetId = localStorage.getItem('pm_spreadsheet_id');
             if (sheetLink && sheetId) {
@@ -170,6 +173,8 @@ const GoogleAuth = {
             userInfo.style.display = 'none';
             if (syncStatus) syncStatus.style.display = 'none';
             if (sheetLink) sheetLink.style.display = 'none';
+            if (linkSheetBtn) linkSheetBtn.style.display = 'none'; // NEW
+            
             // Hide dashboard, show gate
             if (signinGate) signinGate.style.display = '';
             if (appNav) appNav.style.display = 'none';

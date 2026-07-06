@@ -7,6 +7,7 @@ const App = {
         this.initForms();
         this.initExportImport();
         this.initGoogleAuth();
+        this.initSheetLinking(); // NEW: Initialize Link Sheet logic
         MutualFundAPI.initSearchUI();
         this.renderAll();
     },
@@ -217,6 +218,71 @@ const App = {
             }
             e.target.value = '';
         });
+    },
+
+    // NEW: Link Sheet Logic
+    initSheetLinking() {
+        const linkSheetBtn = document.getElementById('linkSheetBtn');
+        const linkSheetModal = document.getElementById('linkSheetModal');
+        const saveLinkedSheetBtn = document.getElementById('saveLinkedSheetBtn');
+        const existingSheetInput = document.getElementById('existingSheetInput');
+
+        if (linkSheetBtn && linkSheetModal) {
+            // Open Modal
+            linkSheetBtn.addEventListener('click', () => {
+                existingSheetInput.value = '';
+                linkSheetModal.classList.add('active');
+            });
+
+            // Handle Save
+            saveLinkedSheetBtn.addEventListener('click', async () => {
+                let inputVal = existingSheetInput.value.trim();
+                if (!inputVal) return;
+
+                // Extract ID from full URL if they pasted a link
+                let sheetId = inputVal;
+                const match = inputVal.match(/\/d\/([a-zA-Z0-9-_]+)/);
+                if (match) {
+                    sheetId = match[1];
+                }
+
+                saveLinkedSheetBtn.textContent = 'Linking...';
+                saveLinkedSheetBtn.disabled = true;
+
+                try {
+                    // Force the new ID into the backend
+                    SheetsBackend.spreadsheetId = sheetId;
+                    
+                    // Verify we have access to this sheet
+                    const valid = await SheetsBackend._verifySpreadsheet();
+                    if (!valid) throw new Error("Cannot access sheet. Check link or your account permissions.");
+
+                    // Force the appProperty tag onto it
+                    await SheetsBackend._apiCall(
+                        `https://www.googleapis.com/drive/v3/files/${sheetId}`,
+                        'PATCH',
+                        { appProperties: { isPortfolioDb: 'true' } }
+                    );
+
+                    // Save to local storage and re-initialize to pull data
+                    localStorage.setItem('pm_spreadsheet_id', sheetId);
+                    await SheetsBackend.init(); 
+                    
+                    if (typeof showToast !== 'undefined') showToast("Sheet linked successfully!");
+                    linkSheetModal.classList.remove('active');
+                } catch (err) {
+                    console.error("Link error:", err);
+                    if (typeof showToast !== 'undefined') {
+                        showToast("Failed to link: " + (err.message || "Invalid sheet"));
+                    }
+                    // Revert to old ID if it failed
+                    SheetsBackend.spreadsheetId = localStorage.getItem('pm_spreadsheet_id');
+                } finally {
+                    saveLinkedSheetBtn.textContent = 'Link & Sync';
+                    saveLinkedSheetBtn.disabled = false;
+                }
+            });
+        }
     },
 
     // Render all views

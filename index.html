@@ -10,7 +10,6 @@
 </head>
 <body>
     <div class="app">
-        <!-- Header -->
         <header class="header">
             <div class="header-left">
                 <h1 class="logo">Portfolio Manager</h1>
@@ -20,6 +19,11 @@
                     <span class="sync-dot"></span>
                     <span class="sync-label">Synced</span>
                 </span>
+                
+                <button class="btn-icon" id="linkSheetBtn" title="Link Existing Google Sheet" style="display:none">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                </button>
+
                 <a class="btn-sheet-link" id="openSheetLink" href="#" target="_blank" rel="noopener" style="display:none" title="Open your spreadsheet in Google Sheets">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                     <span>Open Sheet</span>
@@ -48,7 +52,6 @@
             </div>
         </header>
 
-        <!-- Sign-in Gate -->
         <div class="signin-gate" id="signinGate">
             <div class="signin-gate-content">
                 <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--accent)"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
@@ -62,7 +65,6 @@
             </div>
         </div>
 
-        <!-- Tab Navigation -->
         <nav class="tab-nav" id="appNav" style="display:none">
             <button class="tab-btn active" data-tab="summary">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
@@ -86,14 +88,11 @@
             </button>
         </nav>
 
-        <!-- Tab Content -->
         <main class="tab-content" id="appContent" style="display:none">
-            <!-- Live Data Banner -->
             <div class="live-data-banner" id="liveDataBanner" style="display:none">
                 <span class="live-banner-dot"></span>
                 <span id="liveDataText">Fetching live data...</span>
             </div>
-            <!-- Summary Tab -->
             <section class="tab-pane active" id="summary">
                 <div class="summary-cards">
                     <div class="summary-card card-assets">
@@ -141,7 +140,6 @@
                 </div>
             </section>
 
-            <!-- Investments Tab -->
             <section class="tab-pane" id="investments">
                 <div class="section-header">
                     <h2>My Investments</h2>
@@ -160,7 +158,6 @@
                 </div>
             </section>
 
-            <!-- Debts Tab -->
             <section class="tab-pane" id="debts">
                 <div class="section-header">
                     <h2>My Debts</h2>
@@ -177,19 +174,16 @@
                 </div>
             </section>
 
-            <!-- Emergency Fund Tab -->
             <section class="tab-pane" id="emergency">
                 <div id="emergencyContainer"></div>
             </section>
 
-            <!-- Calculators Tab -->
             <section class="tab-pane" id="calculators">
                 <div class="calc-container" id="calcContainer"></div>
             </section>
         </main>
     </div>
 
-    <!-- Investment Modal -->
     <div class="modal-overlay" id="investmentModal">
         <div class="modal">
             <div class="modal-header">
@@ -266,7 +260,6 @@
                     <label for="investmentUnits">Units Held <small>(from your fund statement)</small></label>
                     <input type="number" id="investmentUnits" placeholder="e.g., 1523.456" min="0" step="0.001">
                 </div>
-                <!-- MF/General fields -->
                 <div id="mfFieldsGroup">
                     <div class="form-row">
                         <div class="form-group">
@@ -290,7 +283,6 @@
                     </div>
                 </div>
                 </div>
-                <!-- Hidden fields with defaults for expected return and horizon -->
                 <input type="hidden" id="expectedReturn" value="12">
                 <input type="hidden" id="investmentHorizon" value="10">
                 <div class="form-actions">
@@ -301,7 +293,6 @@
         </div>
     </div>
 
-    <!-- Debt Modal -->
     <div class="modal-overlay" id="debtModal">
         <div class="modal">
             <div class="modal-header">
@@ -360,7 +351,6 @@
         </div>
     </div>
 
-    <!-- What-If Modal -->
     <div class="modal-overlay" id="whatIfModal">
         <div class="modal modal-wide">
             <div class="modal-header">
@@ -373,7 +363,6 @@
         </div>
     </div>
 
-    <!-- Detail Modal -->
     <div class="modal-overlay" id="detailModal">
         <div class="modal modal-wide">
             <div class="modal-header">
@@ -386,7 +375,6 @@
         </div>
     </div>
 
-    <!-- CAS Import Modal -->
     <div class="modal-overlay" id="casImportModal">
         <div class="modal modal-wide">
             <div class="modal-header">
@@ -423,6 +411,26 @@
                     <button class="btn-primary" onclick="CASImporter.parsePDF()">Parse Statement</button>
                 </div>
                 <div id="casParseResults" style="display:none"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="linkSheetModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Link Existing Spreadsheet</h3>
+                <button class="btn-icon modal-close" data-modal="linkSheetModal">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="form-group" style="margin-top: 15px;">
+                <label for="existingSheetInput">Spreadsheet URL or ID</label>
+                <input type="text" id="existingSheetInput" placeholder="https://docs.google.com/spreadsheets/d/1A2B3C..." autocomplete="off">
+                <small style="color: #666; display: block; margin-top: 8px;">Paste the full URL or just the ID of an existing Portfolio Manager sheet.</small>
+            </div>
+            <div class="form-actions" style="margin-top: 20px;">
+                <button type="button" class="btn-secondary modal-close" data-modal="linkSheetModal">Cancel</button>
+                <button type="button" class="btn-primary" id="saveLinkedSheetBtn">Link & Sync</button>
             </div>
         </div>
     </div>
