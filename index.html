@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portfolio Manager</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='logoGradient' x1='0%25' y1='100%25' x2='100%25' y2='0%25'%3E%3Cstop offset='0%25' style='stop-color:%234285F4;stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:%2334A853;stop-opacity:1' /%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M 25 15 C 20 15, 15 20, 15 25 V 80 H 30 L 30 50 L 50 30 L 70 50 L 70 80 H 85 V 25 C 85 20, 80 15, 75 15 Z' fill='url(%23logoGradient)' /%3E%3Crect x='35' y='60' width='8' height='20' fill='white' /%3E%3Crect x='47' y='50' width='8' height='30' fill='white' /%3E%3Crect x='59' y='40' width='8' height='40' fill='white' /%3E%3Cpath d='M 33 62 L 45 52 L 57 42 L 72 30' stroke='white' stroke-width='4' fill='none' /%3E%3Cpolygon points='70,25 76,35 64,35' fill='white' /%3E%3C/svg%3E">
+    
     <link rel="stylesheet" href="css/styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -15,10 +17,12 @@
                 <a href="#" class="logo-link" style="text-decoration:none; display:flex; align-items:center; color:inherit;">
                     <svg class="app-logo" width="36" height="36" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="display:inline-block; vertical-align:middle; margin-right:10px;">
                         <defs>
-                            <linearGradient id="logoGradient" x1="0%" y1="100%" x2="100%" y2="0%">
-                                <stop offset="0%" style="stop-color:#4285F4;stop-opacity:1" /> <stop offset="100%" style="stop-color:#34A853;stop-opacity:1" /> </linearGradient>
+                            <linearGradient id="logoGradientHeader" x1="0%" y1="100%" x2="100%" y2="0%">
+                                <stop offset="0%" style="stop-color:#4285F4;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#34A853;stop-opacity:1" />
+                            </linearGradient>
                         </defs>
-                        <path d="M 25 15 C 20 15, 15 20, 15 25 V 80 H 30 L 30 50 L 50 30 L 70 50 L 70 80 H 85 V 25 C 85 20, 80 15, 75 15 Z" fill="url(#logoGradient)" />
+                        <path d="M 25 15 C 20 15, 15 20, 15 25 V 80 H 30 L 30 50 L 50 30 L 70 50 L 70 80 H 85 V 25 C 85 20, 80 15, 75 15 Z" fill="url(#logoGradientHeader)" />
                         <rect x="35" y="60" width="8" height="20" fill="white" />
                         <rect x="47" y="50" width="8" height="30" fill="white" />
                         <rect x="59" y="40" width="8" height="40" fill="white" />
@@ -33,6 +37,11 @@
                     <span class="sync-dot"></span>
                     <span class="sync-label">Synced</span>
                 </span>
+                
+                <button class="btn-icon" id="linkSheetBtn" title="Link Existing Google Sheet" style="display:none">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                </button>
+
                 <a class="btn-sheet-link" id="openSheetLink" href="#" target="_blank" rel="noopener" style="display:none" title="Open your spreadsheet in Google Sheets">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                     <span>Open Sheet</span>
@@ -63,7 +72,20 @@
 
         <div class="signin-gate" id="signinGate">
             <div class="signin-gate-content">
-                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--accent)"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                <svg class="app-logo" width="64" height="64" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="margin-bottom: 20px;">
+                    <defs>
+                        <linearGradient id="logoGradientLg" x1="0%" y1="100%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:#4285F4;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#34A853;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <path d="M 25 15 C 20 15, 15 20, 15 25 V 80 H 30 L 30 50 L 50 30 L 70 50 L 70 80 H 85 V 25 C 85 20, 80 15, 75 15 Z" fill="url(#logoGradientLg)" />
+                    <rect x="35" y="60" width="8" height="20" fill="white" />
+                    <rect x="47" y="50" width="8" height="30" fill="white" />
+                    <rect x="59" y="40" width="8" height="40" fill="white" />
+                    <path d="M 33 62 L 45 52 L 57 42 L 72 30" stroke="white" stroke-width="4" fill="none" />
+                    <polygon points="70,25 76,35 64,35" fill="white" />
+                </svg>
                 <h2>Welcome to Portfolio Manager</h2>
                 <p>Sign in with Google to sync your investments and debts securely to your own Google Sheet.</p>
                 <button class="btn-google btn-google-lg" id="googleSignInBtn2">
@@ -420,6 +442,26 @@
                     <button class="btn-primary" onclick="CASImporter.parsePDF()">Parse Statement</button>
                 </div>
                 <div id="casParseResults" style="display:none"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="linkSheetModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Link Existing Spreadsheet</h3>
+                <button class="btn-icon modal-close" data-modal="linkSheetModal">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="form-group" style="margin-top: 15px;">
+                <label for="existingSheetInput">Spreadsheet URL or ID</label>
+                <input type="text" id="existingSheetInput" placeholder="https://docs.google.com/spreadsheets/d/1A2B3C..." autocomplete="off">
+                <small style="color: #666; display: block; margin-top: 8px;">Paste the full URL or just the ID of an existing Portfolio Manager sheet.</small>
+            </div>
+            <div class="form-actions" style="margin-top: 20px;">
+                <button type="button" class="btn-secondary modal-close" data-modal="linkSheetModal">Cancel</button>
+                <button type="button" class="btn-primary" id="saveLinkedSheetBtn">Link & Sync</button>
             </div>
         </div>
     </div>
