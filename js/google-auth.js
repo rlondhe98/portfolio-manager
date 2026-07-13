@@ -1,7 +1,7 @@
 // Google Auth Module - handles OAuth2 sign-in/sign-out
 const GoogleAuth = {
     CLIENT_ID: '1053905145110-6b8osbnt2is4fbiv36v8282ohv3tk5m9.apps.googleusercontent.com',
-    SCOPES: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets',
+    SCOPES: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets',
     tokenClient: null,
     accessToken: null,
     user: null,
