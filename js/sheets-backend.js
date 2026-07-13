@@ -1,11 +1,13 @@
 // Google Sheets Backend - syncs data with user's Google Sheet
 const SheetsBackend = {
     SPREADSHEET_NAME: 'Portfolio Manager Data',
+    // Namespaced, non-sensitive marker - safe to be publicly visible on Drive
+    APP_TAG_KEY: 'pmAppTag',
+    APP_TAG_VALUE: 'PortfolioManager_v1_9f2a1c',
     spreadsheetId: null,
     isSyncing: false,
     _writingInProgress: false,
 
-    // Initialize - find or create the spreadsheet
     async init() {
         if (!GoogleAuth.isSignedIn()) return;
 
@@ -13,39 +15,32 @@ const SheetsBackend = {
 
         try {
             if (this.spreadsheetId) {
-                // Verify the spreadsheet still exists
                 const valid = await this._verifySpreadsheet();
                 if (!valid) {
                     this.spreadsheetId = null;
                     localStorage.removeItem('pm_spreadsheet_id');
                 } else {
-                    // Tag the existing sheet if it hasn't been tagged yet
                     await this._migrateExistingSheet();
                 }
             }
 
             if (!this.spreadsheetId) {
-                // Search for existing spreadsheet or create new one
                 this.spreadsheetId = await this._findSpreadsheet();
                 if (!this.spreadsheetId) {
                     this.spreadsheetId = await this._createSpreadsheet();
-                    // Push local data to newly created sheet
                     await this._pushLocalDataToSheet();
                 } else {
-                    // Found existing sheet, pull data from it
                     await this.pullFromSheet();
                 }
                 localStorage.setItem('pm_spreadsheet_id', this.spreadsheetId);
             } else {
-                // Pull latest data from sheet
                 await this.pullFromSheet();
             }
 
             this._updateSyncStatus('synced');
             this._updateSheetLink();
-            // Pull emergency fund data (silently - may not exist yet)
             if (typeof EmergencyFund !== 'undefined') {
-                try { await EmergencyFund.pullFromSheet(); } catch(e) { /* sheet may not exist */ }
+                try { await EmergencyFund.pullFromSheet(); } catch (e) { /* sheet may not exist */ }
             }
             showToast('Connected to Google Sheets');
         } catch (err) {
@@ -60,7 +55,6 @@ const SheetsBackend = {
         }
     },
 
-    // Sync investments to Google Sheet
     async syncInvestments(investments) {
         if (!GoogleAuth.isSignedIn() || !this.spreadsheetId) return;
         this._writingInProgress = true;
@@ -79,7 +73,6 @@ const SheetsBackend = {
         }
     },
 
-    // Sync debts to Google Sheet
     async syncDebts(debts) {
         if (!GoogleAuth.isSignedIn() || !this.spreadsheetId) {
             console.warn('syncDebts skipped: signedIn=', GoogleAuth.isSignedIn(), 'sheetId=', this.spreadsheetId);
@@ -99,10 +92,8 @@ const SheetsBackend = {
         }
     },
 
-    // Pull all data from Google Sheet
     async pullFromSheet() {
         if (!GoogleAuth.isSignedIn() || !this.spreadsheetId) return;
-        // Don't overwrite local data while a write is in progress
         if (this._writingInProgress) return;
 
         try {
@@ -113,7 +104,6 @@ const SheetsBackend = {
                 'id', 'name', 'type', 'loanAmount', 'interestRate', 'loanTenure', 'startDate', 'emiAmount'
             ]);
 
-            // Parse numeric fields for investments
             const parsedInvestments = investments.map(inv => {
                 const parsed = {
                     ...inv,
@@ -125,14 +115,12 @@ const SheetsBackend = {
                     investmentHorizon: parseInt(inv.investmentHorizon) || 0
                 };
 
-                // Parse sips from JSON string
                 if (inv.sips && typeof inv.sips === 'string' && inv.sips.startsWith('[')) {
                     try { parsed.sips = JSON.parse(inv.sips); } catch (e) { parsed.sips = []; }
                 } else {
                     parsed.sips = [];
                 }
 
-                // Auto-create SIP entry from monthlySIP if sips array is empty
                 if (parsed.sips.length === 0 && parsed.monthlySIP > 0) {
                     parsed.sips = [{
                         id: parsed.id + '_sip',
@@ -147,7 +135,6 @@ const SheetsBackend = {
                 return parsed;
             });
 
-            // Parse numeric fields for debts
             const parsedDebts = debts.map(debt => ({
                 ...debt,
                 loanAmount: parseFloat(debt.loanAmount) || 0,
@@ -156,11 +143,9 @@ const SheetsBackend = {
                 emiAmount: debt.emiAmount ? parseFloat(debt.emiAmount) : null
             }));
 
-            // Update localStorage
             Storage.saveInvestments(parsedInvestments);
             Storage.saveDebts(parsedDebts);
 
-            // Re-render
             if (typeof App !== 'undefined' && App.renderAll) {
                 App.renderAll();
             }
@@ -169,7 +154,6 @@ const SheetsBackend = {
         }
     },
 
-    // Push current localStorage data to sheet
     async _pushLocalDataToSheet() {
         const investments = Storage.getInvestments();
         const debts = Storage.getDebts();
@@ -182,7 +166,6 @@ const SheetsBackend = {
         }
     },
 
-    // API: Verify spreadsheet exists and is accessible
     async _verifySpreadsheet() {
         try {
             const response = await this._apiCall(
@@ -194,26 +177,25 @@ const SheetsBackend = {
         }
     },
 
-    // API: Add hidden tag to existing sheet so other devices can find it
+    // Uses public "properties" (not private "appProperties") so the tag is
+    // visible from any browser/device/OAuth session tied to the same user.
     async _migrateExistingSheet() {
         if (!this.spreadsheetId) return;
-        
+
         try {
-            // 1. Check if the file already has the tag to prevent unnecessary API calls
             const response = await this._apiCall(
-                `https://www.googleapis.com/drive/v3/files/${this.spreadsheetId}?fields=appProperties`
+                `https://www.googleapis.com/drive/v3/files/${this.spreadsheetId}?fields=properties`
             );
             if (!response.ok) return;
-            
+
             const data = await response.json();
-            
-            // 2. If it doesn't have our secret tag, patch it
-            if (!data.appProperties || data.appProperties.isPortfolioDb !== 'true') {
-                console.log('Migrating existing sheet: Adding appProperty tag...');
+
+            if (!data.properties || data.properties[this.APP_TAG_KEY] !== this.APP_TAG_VALUE) {
+                console.log('Migrating existing sheet: Adding property tag...');
                 await this._apiCall(
                     `https://www.googleapis.com/drive/v3/files/${this.spreadsheetId}`,
-                    'PATCH', 
-                    { appProperties: { isPortfolioDb: 'true' } }
+                    'PATCH',
+                    { properties: { [this.APP_TAG_KEY]: this.APP_TAG_VALUE } }
                 );
             }
         } catch (err) {
@@ -221,9 +203,11 @@ const SheetsBackend = {
         }
     },
 
-    // API: Find existing spreadsheet by hidden appProperty tag
+    // Finds the tagged sheet regardless of folder location or file name.
     async _findSpreadsheet() {
-        const query = encodeURIComponent(`appProperties has { key='isPortfolioDb' and value='true' } and trashed=false`);
+        const query = encodeURIComponent(
+            `properties has { key='${this.APP_TAG_KEY}' and value='${this.APP_TAG_VALUE}' } and trashed=false`
+        );
         const response = await this._apiCall(
             `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`
         );
@@ -233,7 +217,6 @@ const SheetsBackend = {
         return data.files && data.files.length > 0 ? data.files[0].id : null;
     },
 
-    // API: Create new spreadsheet with proper structure and hidden tag
     async _createSpreadsheet() {
         const response = await this._apiCall(
             'https://sheets.googleapis.com/v4/spreadsheets',
@@ -273,19 +256,17 @@ const SheetsBackend = {
         const data = await response.json();
         const newSpreadsheetId = data.spreadsheetId;
 
-        // Tag the newly created file immediately
+        // Tag the newly created file immediately (public property, non-sensitive)
         await this._apiCall(
             `https://www.googleapis.com/drive/v3/files/${newSpreadsheetId}`,
             'PATCH',
-            { appProperties: { isPortfolioDb: 'true' } }
+            { properties: { [this.APP_TAG_KEY]: this.APP_TAG_VALUE } }
         );
 
         return newSpreadsheetId;
     },
 
-    // API: Write data to a sheet tab
     async _writeSheet(sheetName, items, columns) {
-        // Build rows: header + data
         const rows = [columns];
         items.forEach(item => {
             rows.push(columns.map(col => {
@@ -298,7 +279,6 @@ const SheetsBackend = {
 
         const range = `${sheetName}!A1:${String.fromCharCode(64 + columns.length)}${rows.length}`;
 
-        // Clear existing data first
         const clearResp = await this._apiCall(
             `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/${sheetName}:clear`,
             'POST'
@@ -309,7 +289,6 @@ const SheetsBackend = {
             throw { status: clearResp.status, message: clearErr.error?.message || 'Clear failed' };
         }
 
-        // Write new data
         const response = await this._apiCall(
             `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/${range}?valueInputOption=RAW`,
             'PUT',
@@ -323,14 +302,13 @@ const SheetsBackend = {
         }
     },
 
-    // API: Read data from a sheet tab
     async _readSheet(sheetName, columns) {
         const response = await this._apiCall(
             `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/${sheetName}!A:Z`
         );
 
         if (!response.ok) {
-            if (response.status === 400) return []; // Sheet might not exist yet
+            if (response.status === 400) return [];
             const err = await response.json();
             throw { status: response.status, message: err.error?.message || 'Read failed' };
         }
@@ -338,7 +316,7 @@ const SheetsBackend = {
         const data = await response.json();
         const rows = data.values || [];
 
-        if (rows.length <= 1) return []; // Only header or empty
+        if (rows.length <= 1) return [];
 
         const headers = rows[0];
         const items = [];
@@ -349,7 +327,6 @@ const SheetsBackend = {
             headers.forEach((header, idx) => {
                 item[header] = row[idx] || '';
             });
-            // Only include rows that have an id
             if (item.id) {
                 items.push(item);
             }
@@ -358,7 +335,6 @@ const SheetsBackend = {
         return items;
     },
 
-    // Make authenticated API call
     async _apiCall(url, method = 'GET', body = null) {
         const options = {
             method,
@@ -373,7 +349,6 @@ const SheetsBackend = {
         return fetch(url, options);
     },
 
-    // Update sync status indicator
     _updateSyncStatus(status) {
         const el = document.getElementById('syncStatus');
         if (!el) return;
@@ -389,7 +364,6 @@ const SheetsBackend = {
         }
     },
 
-    // Show link to open the spreadsheet
     _updateSheetLink() {
         const link = document.getElementById('openSheetLink');
         if (!link) return;
